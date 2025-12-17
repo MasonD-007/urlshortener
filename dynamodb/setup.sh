@@ -11,7 +11,7 @@ apt-get update
 
 # Install Java (required for DynamoDB Local)
 echo "Installing Java..."
-apt-get install -y openjdk-11-jre-headless wget unzip curl
+apt-get install -y openjdk-17-jre-headless wget unzip curl
 
 # Install AWS CLI (for table management)
 echo "Installing AWS CLI..."
