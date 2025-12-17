@@ -39,7 +39,7 @@ sleep 5
 echo ""
 echo "Step 3: Deploying functions..."
 echo "-----------------------------------"
-faas-cli deploy -f stack.yml --gateway $GATEWAY
+faas-cli deploy -f stack.yml --gateway $GATEWAY --skip-push
 
 echo ""
 echo "Step 4: Verifying deployment..."
