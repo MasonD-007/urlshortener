@@ -22,7 +22,8 @@ export default function ResultDisplay({ result }: ResultDisplayProps) {
             setQrLoading(true)
             setQrError(null)
             try {
-                const qrcodeFunction = process.env.NEXT_PUBLIC_API_GATEWAY + 'function/qrcode-wrapper'
+                const apiGateway = process.env.NEXT_PUBLIC_API_GATEWAY || 'http://10.0.1.2:8080'
+                const qrcodeFunction = `${apiGateway}/function/qrcode-wrapper`
                 const response = await fetch(qrcodeFunction, {
                     method: 'POST',
                     body: result.short_url,
