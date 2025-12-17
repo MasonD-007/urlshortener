@@ -1,0 +1,38 @@
+version: 1.0
+provider:
+  name: openfaas
+  gateway: http://10.0.1.2:8080
+
+functions:
+  shorten-url:
+    lang: dockerfile
+    handler: ./openfaas/shorten-url
+    image: shorten-url:latest
+    environment:
+      DYNAMODB_ENDPOINT: http://10.0.1.2:8000
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      DYNAMODB_TABLE: url_mappings
+      SHORT_DOMAIN: https://url.masondrake.dev
+    labels:
+      com.openfaas.scale.min: "1"
+      com.openfaas.scale.max: "5"
+    build_args:
+      ADDITIONAL_PACKAGE: ""
+
+  redirect-url:
+    lang: dockerfile
+    handler: ./openfaas/redirect-url
+    image: redirect-url:latest
+    environment:
+      DYNAMODB_ENDPOINT: http://10.0.1.2:8000
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      DYNAMODB_TABLE: url_mappings
+    labels:
+      com.openfaas.scale.min: "1"
+      com.openfaas.scale.max: "5"
+    build_args:
+      ADDITIONAL_PACKAGE: ""
