@@ -20,7 +20,7 @@ export default function ResultDisplay({ result }: ResultDisplayProps) {
     const fetchQRCode = async () => {
       setQrLoading(true)
       try {
-        const qrcodeFunction = process.env.NEXT_PUBLIC_QRCODE_FUNCTION || 'http://10.0.1.2:8080/function/qrcode-go'
+        const qrcodeFunction = process.env.NEXT_PUBLIC_QRCODE_FUNCTION || 'https://api.masondrake.dev/10012/function/qrcode-go'
         const response = await fetch(qrcodeFunction, {
           method: 'POST',
           body: result.short_url,

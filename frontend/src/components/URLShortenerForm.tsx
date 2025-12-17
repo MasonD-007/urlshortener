@@ -21,7 +21,7 @@ export default function URLShortenerForm({ onResult }: URLShortenerFormProps) {
     setLoading(true)
 
     try {
-      const apiGateway = process.env.NEXT_PUBLIC_API_GATEWAY || 'http://10.0.1.2:8080'
+      const apiGateway = process.env.NEXT_PUBLIC_API_GATEWAY || 'https://api.masondrake.dev/10012'
       const response = await fetch(`${apiGateway}/function/shorten-url`, {
         method: 'POST',
         headers: {

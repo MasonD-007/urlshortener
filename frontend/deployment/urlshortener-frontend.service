@@ -9,8 +9,8 @@ Group=www-data
 WorkingDirectory=/var/www/urlshortener
 Environment="NODE_ENV=production"
 Environment="PORT=3000"
-Environment="NEXT_PUBLIC_API_GATEWAY=http://10.0.1.2:8080"
-Environment="NEXT_PUBLIC_QRCODE_FUNCTION=http://10.0.1.2:8080/function/qrcode-go"
+Environment="NEXT_PUBLIC_API_GATEWAY=https://api.masondrake.dev/10012"
+Environment="NEXT_PUBLIC_QRCODE_FUNCTION=https://api.masondrake.dev/10012/function/qrcode-go"
 ExecStart=/usr/bin/npm start
 Restart=on-failure
 RestartSec=10
