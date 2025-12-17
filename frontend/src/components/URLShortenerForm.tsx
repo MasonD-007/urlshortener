@@ -6,7 +6,6 @@ interface URLShortenerFormProps {
   onResult: (result: {
     hash: string
     short_url: string
-    qr_code_url: string
     original_url: string
   }) => void
 }
@@ -23,7 +22,7 @@ export default function URLShortenerForm({ onResult }: URLShortenerFormProps) {
 
     try {
       const apiGateway = process.env.NEXT_PUBLIC_API_GATEWAY || 'http://10.0.1.2:8080'
-      const response = await fetch(`${apiGateway}/function/url-to-hash`, {
+      const response = await fetch(`${apiGateway}/function/shorten-url`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

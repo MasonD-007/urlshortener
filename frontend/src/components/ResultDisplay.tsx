@@ -6,7 +6,6 @@ interface ResultDisplayProps {
   result: {
     hash: string
     short_url: string
-    qr_code_url: string
     original_url: string
   }
 }

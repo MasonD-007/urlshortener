@@ -1,0 +1,16 @@
+[Unit]
+Description=DynamoDB Local
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/dynamodb-local
+ExecStart=/usr/bin/java -Djava.library.path=./DynamoDBLocal_lib -jar DynamoDBLocal.jar -sharedDb -dbPath ./data -port 8000
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

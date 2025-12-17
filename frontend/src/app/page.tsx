@@ -8,7 +8,6 @@ export default function Home() {
   const [result, setResult] = useState<{
     hash: string
     short_url: string
-    qr_code_url: string
     original_url: string
   } | null>(null)
 
