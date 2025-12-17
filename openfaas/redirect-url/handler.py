@@ -5,7 +5,7 @@ from botocore.exceptions import ClientError
 
 def handle(req):
     """
-    Handle incoming request to redirect from a short URL hash.
+    Handle incoming request to redirect from a short URL hash with CORS support.
     
     Expected input: The hash string (e.g., "abc123")
     
@@ -25,6 +25,23 @@ def handle(req):
         }
     }
     """
+    
+    # CORS headers for all responses
+    cors_headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization"
+    }
+    
+    # Handle OPTIONS preflight request
+    method = os.getenv('Http_Method', '').upper()
+    if method == 'OPTIONS':
+        return json.dumps({
+            "statusCode": 200,
+            "headers": cors_headers,
+            "body": ""
+        })
+    
     try:
         # Extract hash from request (assuming it comes as plain text)
         url_hash = req.strip()
@@ -32,6 +49,7 @@ def handle(req):
         if not url_hash:
             return json.dumps({
                 "statusCode": 400,
+                "headers": cors_headers,
                 "body": json.dumps({"error": "Hash is required"})
             })
         
@@ -55,6 +73,7 @@ def handle(req):
         if 'Item' not in response:
             return json.dumps({
                 "statusCode": 404,
+                "headers": cors_headers,
                 "body": json.dumps({"error": "URL not found"})
             })
         
@@ -67,22 +86,25 @@ def handle(req):
             ExpressionAttributeValues={':inc': 1}
         )
         
-        # Return redirect response
+        # Return redirect response (merge CORS headers with Location)
+        redirect_headers = cors_headers.copy()
+        redirect_headers["Location"] = original_url
+        
         return json.dumps({
             "statusCode": 301,
-            "headers": {
-                "Location": original_url
-            },
+            "headers": redirect_headers,
             "body": ""
         })
         
     except ClientError as e:
         return json.dumps({
             "statusCode": 500,
+            "headers": cors_headers,
             "body": json.dumps({"error": f"Database error: {str(e)}"})
         })
     except Exception as e:
         return json.dumps({
             "statusCode": 500,
+            "headers": cors_headers,
             "body": json.dumps({"error": str(e)})
         })

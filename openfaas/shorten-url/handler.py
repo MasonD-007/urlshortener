@@ -6,7 +6,7 @@ from datetime import datetime
 
 def handle(req):
     """
-    Handle incoming request to shorten a URL.
+    Handle incoming request to shorten a URL with CORS support.
     
     Expected input (JSON):
     {
@@ -20,6 +20,23 @@ def handle(req):
         "original_url": "https://example.com/very/long/url"
     }
     """
+    
+    # CORS headers for all responses
+    cors_headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization"
+    }
+    
+    # Handle OPTIONS preflight request
+    method = os.getenv('Http_Method', '').upper()
+    if method == 'OPTIONS':
+        return json.dumps({
+            "statusCode": 200,
+            "headers": cors_headers,
+            "body": ""
+        })
+    
     try:
         # Parse incoming request
         data = json.loads(req)
@@ -27,8 +44,10 @@ def handle(req):
         
         if not original_url:
             return json.dumps({
-                "error": "URL is required"
-            }), 400
+                "statusCode": 400,
+                "headers": cors_headers,
+                "body": json.dumps({"error": "URL is required"})
+            })
         
         # Generate hash from URL (first 8 characters of SHA256)
         url_hash = hashlib.sha256(original_url.encode()).hexdigest()[:8]
@@ -59,17 +78,27 @@ def handle(req):
         domain = os.getenv('SHORT_DOMAIN', 'http://localhost')
         short_url = f"{domain}/{url_hash}"
         
-        return json.dumps({
+        response_body = {
             "hash": url_hash,
             "short_url": short_url,
             "original_url": original_url
+        }
+        
+        return json.dumps({
+            "statusCode": 200,
+            "headers": cors_headers,
+            "body": json.dumps(response_body)
         })
         
     except json.JSONDecodeError:
         return json.dumps({
-            "error": "Invalid JSON input"
-        }), 400
+            "statusCode": 400,
+            "headers": cors_headers,
+            "body": json.dumps({"error": "Invalid JSON input"})
+        })
     except Exception as e:
         return json.dumps({
-            "error": str(e)
-        }), 500
+            "statusCode": 500,
+            "headers": cors_headers,
+            "body": json.dumps({"error": str(e)})
+        })
