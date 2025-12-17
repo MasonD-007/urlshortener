@@ -1,0 +1,38 @@
+[Unit]
+Description=URL Shortener Frontend (Next.js)
+After=network.target dynamodb-local.service
+Wants=dynamodb-local.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/urlshortener/frontend
+Environment="NODE_ENV=production"
+Environment="PORT=3000"
+Environment="HOSTNAME=0.0.0.0"
+EnvironmentFile=/opt/urlshortener/frontend/.env.production
+
+# Start Next.js production server
+ExecStart=/usr/bin/node /opt/urlshortener/frontend/node_modules/.bin/next start -p 3000 -H 0.0.0.0
+
+# Restart policy
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+
+# Resource limits (optional)
+LimitNOFILE=65536
+MemoryLimit=512M
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=urlshortener-frontend
+
+[Install]
+WantedBy=multi-user.target
