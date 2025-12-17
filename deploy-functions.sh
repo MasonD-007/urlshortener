@@ -29,6 +29,11 @@ echo "Building redirect-url..."
 docker build -t redirect-url:latest -f openfaas/redirect-url/Dockerfile openfaas/redirect-url
 docker tag redirect-url:latest $DOCKER_USER/redirect-url:latest
 
+# Build qrcode-wrapper function
+echo "Building qrcode-wrapper..."
+docker build -t qrcode-wrapper:latest -f openfaas/qrcode-wrapper/Dockerfile openfaas/qrcode-wrapper
+docker tag qrcode-wrapper:latest $DOCKER_USER/qrcode-wrapper:latest
+
 echo ""
 echo "Step 1b: Pushing images to Docker Hub..."
 echo "-----------------------------------"
@@ -38,11 +43,16 @@ docker push $DOCKER_USER/shorten-url:latest
 echo "Pushing $DOCKER_USER/redirect-url:latest..."
 docker push $DOCKER_USER/redirect-url:latest
 
+echo "Pushing $DOCKER_USER/qrcode-wrapper:latest..."
+docker push $DOCKER_USER/qrcode-wrapper:latest
+
 echo ""
 echo "Step 2: Removing old deployments (if they exist)..."
 echo "-----------------------------------"
 faas-cli remove shorten-url --gateway $GATEWAY 2>/dev/null || echo "shorten-url not deployed yet"
 faas-cli remove redirect-url --gateway $GATEWAY 2>/dev/null || echo "redirect-url not deployed yet"
+faas-cli remove qrcode-wrapper --gateway $GATEWAY 2>/dev/null || echo "qrcode-wrapper not deployed yet"
+faas-cli remove qrcode-go --gateway $GATEWAY 2>/dev/null || echo "qrcode-go not deployed yet"
 
 # Wait for cleanup
 echo "Waiting for cleanup..."
@@ -67,6 +77,7 @@ echo ""
 echo "Functions deployed:"
 echo "  - shorten-url: $GATEWAY/function/shorten-url"
 echo "  - redirect-url: $GATEWAY/function/redirect-url"
+echo "  - qrcode-wrapper: $GATEWAY/function/qrcode-wrapper"
 echo ""
 echo "Test the functions:"
 echo "  curl -X POST $GATEWAY/function/shorten-url \\"

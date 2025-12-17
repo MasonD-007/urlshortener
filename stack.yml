@@ -46,3 +46,21 @@ functions:
       com.openfaas.scale.max: "5"
     build_args:
       ADDITIONAL_PACKAGE: ""
+
+  qrcode-wrapper:
+    lang: dockerfile
+    handler: ./openfaas/qrcode-wrapper
+    image: masondrake/qrcode-wrapper:latest
+    environment:
+      content_type: image/png
+    annotations:
+      cors-allow-origin: "*"
+      cors-allow-methods: "POST, OPTIONS"
+      cors-allow-headers: "Content-Type, Authorization"
+      com.openfaas.image-pull-policy: "IfNotPresent"
+    labels:
+      com.openfaas.scale.min: "1"
+      com.openfaas.scale.max: "5"
+      com.openfaas.ui.ext: "png"
+    build_args:
+      ADDITIONAL_PACKAGE: ""
