@@ -20,7 +20,7 @@ echo ""
 
 # Build url-to-hash function
 echo "Building url-to-hash..."
-cd functions/url-to-hash
+cd ../functions/url-to-hash
 docker build -t ${REGISTRY}url-to-hash:latest .
 echo "Built: ${REGISTRY}url-to-hash:latest"
 echo ""
