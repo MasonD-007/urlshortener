@@ -23,9 +23,6 @@ export default function ResultDisplay({ result }: ResultDisplayProps) {
         const qrcodeFunction = process.env.NEXT_PUBLIC_QRCODE_FUNCTION || 'http://10.0.1.2:8080/function/qrcode-go'
         const response = await fetch(qrcodeFunction, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'text/plain',
-          },
           body: result.short_url,
         })
 
@@ -33,6 +30,8 @@ export default function ResultDisplay({ result }: ResultDisplayProps) {
           const blob = await response.blob()
           const imageUrl = URL.createObjectURL(blob)
           setQrCodeImage(imageUrl)
+        } else {
+          console.error('QR code generation failed:', response.status, await response.text())
         }
       } catch (error) {
         console.error('Failed to fetch QR code:', error)
