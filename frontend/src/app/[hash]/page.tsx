@@ -25,6 +25,7 @@ export default function HashPage() {
         const response = await fetch(`${apiGateway}/function/redirect-url`, {
           method: 'POST',
           body: hash,
+          redirect: 'manual' // Don't follow redirects automatically
         })
 
         const result = await response.json()
@@ -50,11 +51,22 @@ export default function HashPage() {
 
           return () => clearInterval(timer)
         } else {
+          // Handle error response
+          let errorMessage = 'URL not found'
+          if (result.body) {
+            try {
+              const bodyObj = typeof result.body === 'string' ? JSON.parse(result.body) : result.body
+              errorMessage = bodyObj.error || errorMessage
+            } catch {
+              errorMessage = result.body
+            }
+          }
+          
           setData({
             hash,
             original_url: '',
-            statusCode: result.statusCode,
-            error: result.body?.error || 'URL not found'
+            statusCode: result.statusCode || 404,
+            error: errorMessage
           })
         }
       } catch (error) {
