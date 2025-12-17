@@ -13,18 +13,30 @@ fi
 
 # Variables
 GATEWAY="http://10.0.1.2:8080"
+DOCKER_USER="masondrake"
 
 echo ""
-echo "Step 1: Building Docker images..."
+echo "Step 1: Building and tagging Docker images..."
 echo "-----------------------------------"
 
 # Build shorten-url function
 echo "Building shorten-url..."
 docker build -t shorten-url:latest -f openfaas/shorten-url/Dockerfile openfaas/shorten-url
+docker tag shorten-url:latest $DOCKER_USER/shorten-url:latest
 
 # Build redirect-url function
 echo "Building redirect-url..."
 docker build -t redirect-url:latest -f openfaas/redirect-url/Dockerfile openfaas/redirect-url
+docker tag redirect-url:latest $DOCKER_USER/redirect-url:latest
+
+echo ""
+echo "Step 1b: Pushing images to Docker Hub..."
+echo "-----------------------------------"
+echo "Pushing $DOCKER_USER/shorten-url:latest..."
+docker push $DOCKER_USER/shorten-url:latest
+
+echo "Pushing $DOCKER_USER/redirect-url:latest..."
+docker push $DOCKER_USER/redirect-url:latest
 
 echo ""
 echo "Step 2: Removing old deployments (if they exist)..."
