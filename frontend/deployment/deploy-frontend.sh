@@ -35,7 +35,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FRONTEND_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Copy all frontend files except node_modules and .next
-rsync -av --exclude='node_modules' --exclude='.next' --exclude='deployment' "$FRONTEND_DIR/" "$DEPLOY_DIR/"
+echo "Copying from $FRONTEND_DIR to $DEPLOY_DIR..."
+cp -r "$FRONTEND_DIR"/* "$DEPLOY_DIR/" 2>/dev/null || true
+# Remove node_modules and .next if they exist
+rm -rf "$DEPLOY_DIR/node_modules" "$DEPLOY_DIR/.next" "$DEPLOY_DIR/deployment"
 
 # Change to deployment directory
 cd "$DEPLOY_DIR"
