@@ -7,7 +7,7 @@ functions:
   shorten-url:
     lang: dockerfile
     handler: ./openfaas/shorten-url
-    image: shorten-url:latest
+    image: masondrake/shorten-url:latest
     environment:
       DYNAMODB_ENDPOINT: http://10.0.1.2:8000
       AWS_REGION: us-east-1
@@ -24,7 +24,7 @@ functions:
   redirect-url:
     lang: dockerfile
     handler: ./openfaas/redirect-url
-    image: redirect-url:latest
+    image: masondrake/redirect-url:latest
     environment:
       DYNAMODB_ENDPOINT: http://10.0.1.2:8000
       AWS_REGION: us-east-1
