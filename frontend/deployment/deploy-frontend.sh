@@ -6,16 +6,34 @@ echo "URL Shortener Frontend Deployment"
 echo "=========================================="
 
 # Variables
+PROXMOX_HOST="10.0.1.2"
+PROXMOX_USER="root"
 DEPLOY_DIR="/var/www/urlshortener"
 SERVICE_NAME="urlshortener-frontend"
 
-# Check if running as root
-if [ "$EUID" -ne 0 ]; then 
-   echo "Please run as root (use sudo)"
-   exit 1
-fi
+# Get the script directory and frontend directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FRONTEND_DIR="$(dirname "$SCRIPT_DIR")"
 
-# Install Node.js and npm if not present
+echo "Deploying frontend from local machine to Proxmox container..."
+echo ""
+
+# Copy frontend files to Proxmox
+echo "Step 1: Copying frontend files to Proxmox ($PROXMOX_HOST)..."
+ssh $PROXMOX_USER@$PROXMOX_HOST "mkdir -p /tmp/urlshortener-frontend"
+scp -r "$FRONTEND_DIR"/* $PROXMOX_USER@$PROXMOX_HOST:/tmp/urlshortener-frontend/
+
+echo ""
+echo "Step 2: Running deployment on Proxmox..."
+echo "-----------------------------------"
+
+# Run deployment on Proxmox
+ssh $PROXMOX_USER@$PROXMOX_HOST << 'ENDSSH'
+set -e
+
+DEPLOY_DIR="/var/www/urlshortener"
+SERVICE_NAME="urlshortener-frontend"
+
 echo "Checking for Node.js..."
 if ! command -v node &> /dev/null; then
     echo "Installing Node.js..."
@@ -25,65 +43,82 @@ else
     echo "Node.js already installed: $(node --version)"
 fi
 
-# Create deployment directory
-echo "Creating deployment directory..."
+echo "Setting up deployment directory..."
 mkdir -p "$DEPLOY_DIR"
-
-# Copy frontend files (assuming script is run from frontend/deployment/)
-echo "Copying frontend files..."
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FRONTEND_DIR="$(dirname "$SCRIPT_DIR")"
-
-# Copy all frontend files except node_modules and .next
-echo "Copying from $FRONTEND_DIR to $DEPLOY_DIR..."
-cp -r "$FRONTEND_DIR"/* "$DEPLOY_DIR/" 2>/dev/null || true
-# Remove node_modules and .next if they exist
+rm -rf "$DEPLOY_DIR"/*
+cp -r /tmp/urlshortener-frontend/* "$DEPLOY_DIR/"
 rm -rf "$DEPLOY_DIR/node_modules" "$DEPLOY_DIR/.next" "$DEPLOY_DIR/deployment"
 
-# Change to deployment directory
 cd "$DEPLOY_DIR"
 
-# Install dependencies
 echo "Installing dependencies..."
 npm install
 
-# Build the Next.js application
 echo "Building Next.js application..."
 npm run build
 
-# Set ownership to www-data
 echo "Setting ownership to www-data..."
 chown -R www-data:www-data "$DEPLOY_DIR"
 
-# Copy systemd service file
 echo "Installing systemd service..."
-cp "$SCRIPT_DIR/urlshortener-frontend.service" /etc/systemd/system/
+cat > /etc/systemd/system/urlshortener-frontend.service << 'EOF'
+[Unit]
+Description=URL Shortener Frontend (Next.js)
+After=network.target
 
-# Reload systemd
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/urlshortener
+Environment="NODE_ENV=production"
+Environment="PORT=3000"
+Environment="NEXT_PUBLIC_API_GATEWAY=https://api.masondrake.dev"
+Environment="NEXT_PUBLIC_QRCODE_FUNCTION=https://api.masondrake.dev/function/qrcode-wrapper"
+ExecStart=/usr/bin/npm start
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 echo "Reloading systemd..."
 systemctl daemon-reload
 
-# Enable and start the service
 echo "Enabling and starting $SERVICE_NAME service..."
 systemctl enable "$SERVICE_NAME"
 systemctl restart "$SERVICE_NAME"
 
-# Wait a moment for service to start
+echo "Waiting for service to start..."
 sleep 3
 
-# Check service status
 echo ""
 echo "=========================================="
 echo "Deployment Complete!"
 echo "=========================================="
 echo ""
 echo "Service Status:"
-systemctl status "$SERVICE_NAME" --no-pager
+systemctl status "$SERVICE_NAME" --no-pager --lines=10
 
 echo ""
-echo "Frontend should be accessible at: http://10.0.1.2:3000"
+echo "Cleaning up temporary files..."
+rm -rf /tmp/urlshortener-frontend
+ENDSSH
+
 echo ""
-echo "Useful commands:"
+echo "=========================================="
+echo "Frontend Successfully Deployed!"
+echo "=========================================="
+echo ""
+echo "Frontend is accessible at:"
+echo "  - Local: http://10.0.1.2:3000"
+echo "  - Production: https://url.masondrake.dev"
+echo ""
+echo "Useful commands (run on Proxmox via SSH):"
+echo "  ssh $PROXMOX_USER@$PROXMOX_HOST"
 echo "  View logs: journalctl -u $SERVICE_NAME -f"
 echo "  Restart service: systemctl restart $SERVICE_NAME"
 echo "  Stop service: systemctl stop $SERVICE_NAME"
