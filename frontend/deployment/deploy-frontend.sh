@@ -6,34 +6,20 @@ echo "URL Shortener Frontend Deployment"
 echo "=========================================="
 
 # Variables
-PROXMOX_HOST="10.0.1.2"
-PROXMOX_USER="root"
 DEPLOY_DIR="/var/www/urlshortener"
 SERVICE_NAME="urlshortener-frontend"
+
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then 
+   echo "Please run as root (use sudo)"
+   exit 1
+fi
 
 # Get the script directory and frontend directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FRONTEND_DIR="$(dirname "$SCRIPT_DIR")"
 
-echo "Deploying frontend from local machine to Proxmox container..."
-echo ""
-
-# Copy frontend files to Proxmox
-echo "Step 1: Copying frontend files to Proxmox ($PROXMOX_HOST)..."
-ssh $PROXMOX_USER@$PROXMOX_HOST "mkdir -p /tmp/urlshortener-frontend"
-scp -r "$FRONTEND_DIR"/* $PROXMOX_USER@$PROXMOX_HOST:/tmp/urlshortener-frontend/
-
-echo ""
-echo "Step 2: Running deployment on Proxmox..."
-echo "-----------------------------------"
-
-# Run deployment on Proxmox
-ssh $PROXMOX_USER@$PROXMOX_HOST << 'ENDSSH'
-set -e
-
-DEPLOY_DIR="/var/www/urlshortener"
-SERVICE_NAME="urlshortener-frontend"
-
+# Install Node.js and npm if not present
 echo "Checking for Node.js..."
 if ! command -v node &> /dev/null; then
     echo "Installing Node.js..."
@@ -43,23 +29,32 @@ else
     echo "Node.js already installed: $(node --version)"
 fi
 
+# Create deployment directory
 echo "Setting up deployment directory..."
 mkdir -p "$DEPLOY_DIR"
 rm -rf "$DEPLOY_DIR"/*
-cp -r /tmp/urlshortener-frontend/* "$DEPLOY_DIR/"
+
+# Copy frontend files
+echo "Copying frontend files from $FRONTEND_DIR..."
+cp -r "$FRONTEND_DIR"/* "$DEPLOY_DIR/"
 rm -rf "$DEPLOY_DIR/node_modules" "$DEPLOY_DIR/.next" "$DEPLOY_DIR/deployment"
 
+# Change to deployment directory
 cd "$DEPLOY_DIR"
 
+# Install dependencies
 echo "Installing dependencies..."
 npm install
 
+# Build the Next.js application
 echo "Building Next.js application..."
 npm run build
 
+# Set ownership to www-data
 echo "Setting ownership to www-data..."
 chown -R www-data:www-data "$DEPLOY_DIR"
 
+# Install systemd service
 echo "Installing systemd service..."
 cat > /etc/systemd/system/urlshortener-frontend.service << 'EOF'
 [Unit]
@@ -85,16 +80,19 @@ StandardError=journal
 WantedBy=multi-user.target
 EOF
 
+# Reload systemd
 echo "Reloading systemd..."
 systemctl daemon-reload
 
+# Enable and start the service
 echo "Enabling and starting $SERVICE_NAME service..."
 systemctl enable "$SERVICE_NAME"
 systemctl restart "$SERVICE_NAME"
 
-echo "Waiting for service to start..."
+# Wait a moment for service to start
 sleep 3
 
+# Check service status
 echo ""
 echo "=========================================="
 echo "Deployment Complete!"
@@ -104,21 +102,12 @@ echo "Service Status:"
 systemctl status "$SERVICE_NAME" --no-pager --lines=10
 
 echo ""
-echo "Cleaning up temporary files..."
-rm -rf /tmp/urlshortener-frontend
-ENDSSH
-
-echo ""
-echo "=========================================="
-echo "Frontend Successfully Deployed!"
-echo "=========================================="
-echo ""
 echo "Frontend is accessible at:"
-echo "  - Local: http://10.0.1.2:3000"
+echo "  - Local: http://localhost:3000"
+echo "  - Network: http://10.0.1.2:3000"
 echo "  - Production: https://url.masondrake.dev"
 echo ""
-echo "Useful commands (run on Proxmox via SSH):"
-echo "  ssh $PROXMOX_USER@$PROXMOX_HOST"
+echo "Useful commands:"
 echo "  View logs: journalctl -u $SERVICE_NAME -f"
 echo "  Restart service: systemctl restart $SERVICE_NAME"
 echo "  Stop service: systemctl stop $SERVICE_NAME"

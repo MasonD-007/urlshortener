@@ -7,14 +7,14 @@ echo "=========================================="
 echo ""
 
 # Variables
-GATEWAY="http://10.0.1.2:8080"
+GATEWAY="http://localhost:8080"
 DOCKER_USER="masondrake"
-PROXMOX_HOST="10.0.1.2"
-PROXMOX_USER="root"
+DEPLOY_DIR="/var/www/urlshortener"
+SERVICE_NAME="urlshortener-frontend"
 
 # Check if Docker is running
 if ! docker ps > /dev/null 2>&1; then
-    echo "❌ Docker is not running. Please start Docker Desktop and try again."
+    echo "❌ Docker is not running. Please start Docker and try again."
     exit 1
 fi
 
@@ -89,47 +89,57 @@ echo "Part 2: Deploy Frontend"
 echo "=========================================="
 echo ""
 
-# Deploy frontend to Proxmox container
-echo "Deploying frontend to Proxmox container..."
-echo "Running deployment script on $PROXMOX_HOST..."
-
-# Copy frontend files to Proxmox
-echo "Copying frontend files to Proxmox..."
-ssh $PROXMOX_USER@$PROXMOX_HOST "mkdir -p /tmp/urlshortener-frontend"
-scp -r frontend/* $PROXMOX_USER@$PROXMOX_HOST:/tmp/urlshortener-frontend/
-
-# Run deployment on Proxmox
-ssh $PROXMOX_USER@$PROXMOX_HOST << 'ENDSSH'
-set -e
-
-DEPLOY_DIR="/var/www/urlshortener"
-SERVICE_NAME="urlshortener-frontend"
-
-echo "Installing/Updating Node.js..."
-if ! command -v node &> /dev/null; then
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-    apt-get install -y nodejs
-fi
-
-echo "Setting up deployment directory..."
-mkdir -p "$DEPLOY_DIR"
-rm -rf "$DEPLOY_DIR"/*
-cp -r /tmp/urlshortener-frontend/* "$DEPLOY_DIR/"
-rm -rf "$DEPLOY_DIR/node_modules" "$DEPLOY_DIR/.next" "$DEPLOY_DIR/deployment"
-
-cd "$DEPLOY_DIR"
-
-echo "Installing dependencies..."
-npm install
-
-echo "Building Next.js application..."
-npm run build
-
-echo "Setting ownership..."
-chown -R www-data:www-data "$DEPLOY_DIR"
-
-echo "Installing systemd service..."
-cat > /etc/systemd/system/urlshortener-frontend.service << 'EOF'
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then 
+   echo "⚠ Frontend deployment requires root privileges."
+   echo "Please run: sudo ./deploy-all.sh"
+   echo ""
+   echo "Skipping frontend deployment..."
+else
+    echo "Deploying frontend locally..."
+    
+    # Get the current directory where the script is
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    FRONTEND_DIR="$SCRIPT_DIR/frontend"
+    
+    # Install Node.js and npm if not present
+    echo "Checking for Node.js..."
+    if ! command -v node &> /dev/null; then
+        echo "Installing Node.js..."
+        curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+        apt-get install -y nodejs
+    else
+        echo "Node.js already installed: $(node --version)"
+    fi
+    
+    # Create deployment directory
+    echo "Setting up deployment directory..."
+    mkdir -p "$DEPLOY_DIR"
+    rm -rf "$DEPLOY_DIR"/*
+    
+    # Copy frontend files
+    echo "Copying frontend files..."
+    cp -r "$FRONTEND_DIR"/* "$DEPLOY_DIR/"
+    rm -rf "$DEPLOY_DIR/node_modules" "$DEPLOY_DIR/.next" "$DEPLOY_DIR/deployment"
+    
+    # Change to deployment directory
+    cd "$DEPLOY_DIR"
+    
+    # Install dependencies
+    echo "Installing dependencies..."
+    npm install
+    
+    # Build the Next.js application
+    echo "Building Next.js application..."
+    npm run build
+    
+    # Set ownership to www-data
+    echo "Setting ownership to www-data..."
+    chown -R www-data:www-data "$DEPLOY_DIR"
+    
+    # Install systemd service
+    echo "Installing systemd service..."
+    cat > /etc/systemd/system/urlshortener-frontend.service << 'EOF'
 [Unit]
 Description=URL Shortener Frontend (Next.js)
 After=network.target
@@ -152,26 +162,27 @@ StandardError=journal
 [Install]
 WantedBy=multi-user.target
 EOF
-
-echo "Reloading systemd and restarting service..."
-systemctl daemon-reload
-systemctl enable "$SERVICE_NAME"
-systemctl restart "$SERVICE_NAME"
-
-echo "Waiting for service to start..."
-sleep 3
-
-echo "✓ Frontend deployed and running"
-systemctl status "$SERVICE_NAME" --no-pager --lines=5
-
-# Cleanup
-rm -rf /tmp/urlshortener-frontend
-ENDSSH
+    
+    # Reload systemd
+    echo "Reloading systemd..."
+    systemctl daemon-reload
+    
+    # Enable and start the service
+    echo "Enabling and starting $SERVICE_NAME service..."
+    systemctl enable "$SERVICE_NAME"
+    systemctl restart "$SERVICE_NAME"
+    
+    # Wait a moment for service to start
+    sleep 3
+    
+    echo ""
+    echo "✓ Frontend deployed"
+    echo ""
+    echo "Service Status:"
+    systemctl status "$SERVICE_NAME" --no-pager --lines=5
+fi
 
 echo ""
-echo "✓ Frontend deployed"
-echo ""
-
 echo "=========================================="
 echo "Testing Deployment"
 echo "=========================================="
@@ -218,7 +229,11 @@ echo "  - OpenFaaS Gateway: http://10.0.1.2:8080"
 echo "  - Frontend: http://10.0.1.2:3000"
 echo "  - Production URL: https://url.masondrake.dev"
 echo ""
+echo "Useful commands:"
+echo "  View frontend logs: journalctl -u $SERVICE_NAME -f"
+echo "  Restart frontend: systemctl restart $SERVICE_NAME"
+echo "  View function logs: faas-cli logs <function-name>"
+echo ""
 echo "Test the full flow:"
 echo "  Visit: https://url.masondrake.dev"
-echo "  Create a short URL and test the redirect"
 echo ""

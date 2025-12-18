@@ -12,7 +12,7 @@ if [ ! -f "stack.yml" ]; then
 fi
 
 # Variables
-GATEWAY="http://10.0.1.2:8080"
+GATEWAY="http://localhost:8080"
 DOCKER_USER="masondrake"
 
 echo ""
@@ -35,7 +35,7 @@ docker build -t qrcode-wrapper:latest -f openfaas/qrcode-wrapper/Dockerfile open
 docker tag qrcode-wrapper:latest $DOCKER_USER/qrcode-wrapper:latest
 
 echo ""
-echo "Step 1b: Pushing images to Docker Hub..."
+echo "Step 2: Pushing images to Docker Hub..."
 echo "-----------------------------------"
 echo "Pushing $DOCKER_USER/shorten-url:latest..."
 docker push $DOCKER_USER/shorten-url:latest
@@ -47,7 +47,7 @@ echo "Pushing $DOCKER_USER/qrcode-wrapper:latest..."
 docker push $DOCKER_USER/qrcode-wrapper:latest
 
 echo ""
-echo "Step 2: Removing old deployments (if they exist)..."
+echo "Step 3: Removing old deployments (if they exist)..."
 echo "-----------------------------------"
 faas-cli remove shorten-url --gateway $GATEWAY 2>/dev/null || echo "shorten-url not deployed yet"
 faas-cli remove redirect-url --gateway $GATEWAY 2>/dev/null || echo "redirect-url not deployed yet"
