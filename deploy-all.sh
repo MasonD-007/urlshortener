@@ -6,6 +6,16 @@ echo "URL Shortener Full Deployment"
 echo "=========================================="
 echo ""
 
+# Check if running from the correct directory
+if [ ! -f "stack.yml" ] || [ ! -d "openfaas" ]; then
+    echo "❌ Error: This script must be run from the urlshortener directory"
+    echo ""
+    echo "Please run:"
+    echo "  cd ~/urlshortener"
+    echo "  sudo ./deploy-all.sh"
+    exit 1
+fi
+
 # Variables
 GATEWAY="http://localhost:8080"
 DOCKER_USER="masondrake"
@@ -19,6 +29,21 @@ if ! docker ps > /dev/null 2>&1; then
 fi
 
 echo "✓ Docker is running"
+echo ""
+
+# Check if logged in to OpenFaaS
+echo "Checking OpenFaaS authentication..."
+if ! faas-cli list --gateway $GATEWAY > /dev/null 2>&1; then
+    echo "❌ Not authenticated with OpenFaaS gateway"
+    echo ""
+    echo "Please login first:"
+    echo "  cat ~/faas_pass.txt | faas-cli login --password-stdin --gateway $GATEWAY"
+    echo ""
+    echo "Or create ~/faas_pass.txt with your password and run:"
+    echo "  cat ~/faas_pass.txt | faas-cli login --password-stdin"
+    exit 1
+fi
+echo "✓ Authenticated with OpenFaaS"
 echo ""
 
 echo "=========================================="

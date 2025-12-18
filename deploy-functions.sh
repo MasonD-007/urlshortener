@@ -15,6 +15,20 @@ fi
 GATEWAY="http://localhost:8080"
 DOCKER_USER="masondrake"
 
+# Check if logged in to OpenFaaS
+echo "Checking OpenFaaS authentication..."
+if ! faas-cli list --gateway $GATEWAY > /dev/null 2>&1; then
+    echo "❌ Not authenticated with OpenFaaS gateway"
+    echo ""
+    echo "Please login first:"
+    echo "  cat ~/faas_pass.txt | faas-cli login --password-stdin --gateway $GATEWAY"
+    echo ""
+    echo "Or create ~/faas_pass.txt with your password and run:"
+    echo "  cat ~/faas_pass.txt | faas-cli login --password-stdin"
+    exit 1
+fi
+echo "✓ Authenticated with OpenFaaS"
+
 echo ""
 echo "Step 1: Building and tagging Docker images..."
 echo "-----------------------------------"
