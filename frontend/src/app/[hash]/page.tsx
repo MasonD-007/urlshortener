@@ -28,44 +28,55 @@ export default function HashPage() {
           redirect: 'manual' // Don't follow redirects automatically
         })
 
-        const result = await response.json()
+        // OpenFaaS returns actual HTTP redirects (301/302), not JSON
+        if (response.status === 301 || response.status === 0) {
+          // Status 0 means opaque redirect (CORS preflight blocked the redirect)
+          // Get the Location header from the response
+          const originalUrl = response.headers.get('Location')
+          
+          if (originalUrl) {
+            setData({
+              hash,
+              original_url: originalUrl,
+              statusCode: response.status || 301
+            })
+            
+            // Start countdown to redirect
+            let count = 5
+            const timer = setInterval(() => {
+              count--
+              setCountdown(count)
+              if (count <= 0) {
+                clearInterval(timer)
+                window.location.href = originalUrl
+              }
+            }, 1000)
+
+            return () => clearInterval(timer)
+          }
+        }
         
-        if (result.statusCode === 301 || result.statusCode === 302) {
-          const originalUrl = result.headers.Location
+        // Handle error responses (404, 500, etc.)
+        if (response.status === 404) {
           setData({
             hash,
-            original_url: originalUrl,
-            statusCode: result.statusCode
+            original_url: '',
+            statusCode: 404,
+            error: 'URL not found'
           })
-          
-          // Start countdown to redirect
-          let count = 5
-          const timer = setInterval(() => {
-            count--
-            setCountdown(count)
-            if (count <= 0) {
-              clearInterval(timer)
-              window.location.href = originalUrl
-            }
-          }, 1000)
-
-          return () => clearInterval(timer)
-        } else {
-          // Handle error response
-          let errorMessage = 'URL not found'
-          if (result.body) {
-            try {
-              const bodyObj = typeof result.body === 'string' ? JSON.parse(result.body) : result.body
-              errorMessage = bodyObj.error || errorMessage
-            } catch {
-              errorMessage = result.body
-            }
+        } else if (!response.ok) {
+          let errorMessage = 'Unknown error'
+          try {
+            const result = await response.json()
+            errorMessage = result.error || result.body?.error || errorMessage
+          } catch {
+            errorMessage = `HTTP ${response.status}: ${response.statusText}`
           }
           
           setData({
             hash,
             original_url: '',
-            statusCode: result.statusCode || 404,
+            statusCode: response.status,
             error: errorMessage
           })
         }
