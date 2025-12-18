@@ -17,72 +17,77 @@ export default function HashPage() {
     const [data, setData] = useState<RedirectData | null>(null)
     const [loading, setLoading] = useState(true)
 
-    useEffect(() => {
-        const fetchRedirectUrl = async () => {
-            try {
-                const apiGateway = process.env.NEXT_PUBLIC_API_GATEWAY || 'https://faas.masondrake.dev'
-                const response = await fetch(`${apiGateway}/function/redirect-url`, {
-                    method: 'POST',
-                    body: hash,
-                    redirect: 'manual' // Don't follow redirects automatically
-                })
+  useEffect(() => {
+    const fetchRedirectUrl = async () => {
+      try {
+        const apiGateway = process.env.NEXT_PUBLIC_API_GATEWAY || 'https://faas.masondrake.dev'
+        
+        // Add ?format=json to request JSON instead of redirect
+        const response = await fetch(`${apiGateway}/function/redirect-url?format=json`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/plain'
+          },
+          body: hash
+        })
 
-                console.log('Response status:', response.status)
-                console.log('Response:', response)
+        console.log('Response status:', response.status)
 
-                // OpenFaaS returns actual HTTP redirects (301/302), not JSON
-                if (response.status === 301 || response.status === 0) {
-                    // Status 0 means opaque redirect (CORS preflight blocked the redirect)
-                    // Get the Location header from the response
-                    const originalUrl = response.headers.get('Location')
-
-                    if (originalUrl) {
-                        setData({
-                            hash,
-                            original_url: originalUrl,
-                            statusCode: response.status || 301
-                        })
-                    }
-                }
-
-                // Handle error responses (404, 500, etc.)
-                if (response.status === 404) {
-                    setData({
-                        hash,
-                        original_url: '',
-                        statusCode: 404,
-                        error: 'URL not found'
-                    })
-                } else if (!response.ok) {
-                    let errorMessage = 'Unknown error'
-                    try {
-                        const result = await response.json()
-                        errorMessage = result.error || result.body?.error || errorMessage
-                    } catch {
-                        errorMessage = `HTTP ${response.status}: ${response.statusText}`
-                    }
-
-                    setData({
-                        hash,
-                        original_url: '',
-                        statusCode: response.status,
-                        error: errorMessage
-                    })
-                }
-            } catch (error) {
-                setData({
-                    hash,
-                    original_url: '',
-                    statusCode: 500,
-                    error: error instanceof Error ? error.message : 'Unknown error'
-                })
-            } finally {
-                setLoading(false)
-            }
+        if (response.ok) {
+          const result = await response.json()
+          
+          if (result.original_url) {
+            setData({
+              hash,
+              original_url: result.original_url,
+              statusCode: result.statusCode || 200
+            })
+          } else if (result.error) {
+            setData({
+              hash,
+              original_url: '',
+              statusCode: result.statusCode || 500,
+              error: result.error
+            })
+          }
+        } else if (response.status === 404) {
+          setData({
+            hash,
+            original_url: '',
+            statusCode: 404,
+            error: 'URL not found'
+          })
+        } else {
+          let errorMessage = 'Unknown error'
+          try {
+            const result = await response.json()
+            errorMessage = result.error || errorMessage
+          } catch {
+            errorMessage = `HTTP ${response.status}: ${response.statusText}`
+          }
+          
+          setData({
+            hash,
+            original_url: '',
+            statusCode: response.status,
+            error: errorMessage
+          })
         }
+      } catch (error) {
+        console.error('Fetch error:', error)
+        setData({
+          hash,
+          original_url: '',
+          statusCode: 500,
+          error: error instanceof Error ? error.message : 'Network error - could not connect to API'
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
 
-        fetchRedirectUrl()
-    }, [hash])
+    fetchRedirectUrl()
+  }, [hash])
 
     if (loading) {
         return (

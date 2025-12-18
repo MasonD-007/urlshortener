@@ -14,6 +14,9 @@ def main():
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
         return response
     
+    # Check if client wants JSON response instead of redirect
+    request_format = request.args.get("format", "").lower()
+    
     # Get request body
     if request.method == "POST":
         req_data = request.get_data(as_text=True)
@@ -32,6 +35,20 @@ def main():
     # Handle redirects (301, 302, etc)
     if status_code in [301, 302, 303, 307, 308]:
         location = headers.get("Location", "/")
+        
+        # If client requested JSON format, return JSON instead of redirect
+        if request_format == "json":
+            response_data = {
+                "statusCode": status_code,
+                "original_url": location,
+                "hash": req_data.strip()
+            }
+            response = make_response(json.dumps(response_data), 200)
+            response.headers["Content-Type"] = "application/json"
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            return response
+        
+        # Otherwise, return actual HTTP redirect
         response = make_response("", status_code)
         response.headers["Location"] = location
         # Add CORS headers even for redirects
@@ -39,7 +56,7 @@ def main():
         response.headers["Access-Control-Expose-Headers"] = "Location"
         return response
     
-    # Create regular response
+    # Create regular response (errors, etc.)
     if isinstance(body, str) and body:
         try:
             body_obj = json.loads(body)
