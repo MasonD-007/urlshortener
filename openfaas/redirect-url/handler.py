@@ -1,7 +1,22 @@
 import json
 import boto3
 import os
+import sys
+from datetime import datetime
 from botocore.exceptions import ClientError
+
+def log(level, message, **kwargs):
+    """Helper function to log messages with consistent format"""
+    timestamp = datetime.utcnow().isoformat()
+    log_data = {
+        "timestamp": timestamp,
+        "level": level,
+        "function": "redirect-url",
+        "message": message,
+        **kwargs
+    }
+    print(json.dumps(log_data), file=sys.stderr)
+    sys.stderr.flush()
 
 def handle(req):
     """
@@ -26,6 +41,8 @@ def handle(req):
     }
     """
     
+    log("INFO", "Redirect request received")
+    
     # CORS headers for all responses
     cors_headers = {
         "Access-Control-Allow-Origin": "*",
@@ -35,7 +52,10 @@ def handle(req):
     
     # Handle OPTIONS preflight request
     method = os.getenv('Http_Method', '').upper()
+    log("INFO", "HTTP method detected", method=method)
+    
     if method == 'OPTIONS':
+        log("INFO", "Handling OPTIONS preflight request")
         return json.dumps({
             "statusCode": 200,
             "headers": cors_headers,
@@ -45,8 +65,10 @@ def handle(req):
     try:
         # Extract hash from request (assuming it comes as plain text)
         url_hash = req.strip()
+        log("INFO", "Received hash", hash=url_hash, hash_length=len(url_hash))
         
         if not url_hash:
+            log("WARN", "Empty hash received")
             return json.dumps({
                 "statusCode": 400,
                 "headers": cors_headers,
@@ -54,9 +76,12 @@ def handle(req):
             })
         
         # Initialize DynamoDB client
+        dynamodb_endpoint = os.getenv('DYNAMODB_ENDPOINT', 'http://dynamodb:8000')
+        log("INFO", "Initializing DynamoDB client", endpoint=dynamodb_endpoint)
+        
         dynamodb = boto3.resource(
             'dynamodb',
-            endpoint_url=os.getenv('DYNAMODB_ENDPOINT', 'http://dynamodb:8000'),
+            endpoint_url=dynamodb_endpoint,
             region_name=os.getenv('AWS_REGION', 'us-east-1'),
             aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID', 'local'),
             aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY', 'local')
@@ -64,6 +89,7 @@ def handle(req):
         
         table_name = os.getenv('DYNAMODB_TABLE', 'url_mappings')
         table = dynamodb.Table(table_name)
+        log("INFO", "Querying DynamoDB", table=table_name, hash=url_hash)
         
         # Query DynamoDB for the hash
         response = table.get_item(
@@ -71,6 +97,7 @@ def handle(req):
         )
         
         if 'Item' not in response:
+            log("WARN", "Hash not found in database", hash=url_hash)
             return json.dumps({
                 "statusCode": 404,
                 "headers": cors_headers,
@@ -78,8 +105,10 @@ def handle(req):
             })
         
         original_url = response['Item']['original_url']
+        log("INFO", "URL found", hash=url_hash, original_url=original_url)
         
         # Increment click count (optional)
+        log("INFO", "Incrementing click count", hash=url_hash)
         table.update_item(
             Key={'hash': url_hash},
             UpdateExpression='SET click_count = click_count + :inc',
@@ -90,6 +119,8 @@ def handle(req):
         redirect_headers = cors_headers.copy()
         redirect_headers["Location"] = original_url
         
+        log("INFO", "Returning redirect response", hash=url_hash, location=original_url, status=301)
+        
         return json.dumps({
             "statusCode": 301,
             "headers": redirect_headers,
@@ -97,12 +128,14 @@ def handle(req):
         })
         
     except ClientError as e:
+        log("ERROR", "DynamoDB error", error=str(e), error_code=e.response.get('Error', {}).get('Code'))
         return json.dumps({
             "statusCode": 500,
             "headers": cors_headers,
             "body": json.dumps({"error": f"Database error: {str(e)}"})
         })
     except Exception as e:
+        log("ERROR", "Unexpected error", error=str(e), error_type=type(e).__name__)
         return json.dumps({
             "statusCode": 500,
             "headers": cors_headers,
