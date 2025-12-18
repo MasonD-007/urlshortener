@@ -21,7 +21,7 @@ export default function HashPage() {
   useEffect(() => {
     const fetchRedirectUrl = async () => {
       try {
-        const apiGateway = process.env.NEXT_PUBLIC_API_GATEWAY || 'http://10.0.1.2:8080'
+        const apiGateway = process.env.NEXT_PUBLIC_API_GATEWAY || 'https://faas.masondrake.dev'
         const response = await fetch(`${apiGateway}/function/redirect-url`, {
           method: 'POST',
           body: hash,
