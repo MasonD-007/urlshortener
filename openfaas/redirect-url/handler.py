@@ -105,7 +105,8 @@ def handle(req):
             })
         
         original_url = response['Item']['original_url']
-        current_count = response['Item'].get('click_count', 0)
+        # Convert Decimal to int for JSON serialization
+        current_count = int(response['Item'].get('click_count', 0))
         log("INFO", "URL found", hash=url_hash, original_url=original_url, current_count=current_count)
         
         # Increment click count
@@ -116,7 +117,8 @@ def handle(req):
             ExpressionAttributeValues={':inc': 1},
             ReturnValues='UPDATED_NEW'
         )
-        new_count = update_response.get('Attributes', {}).get('click_count', current_count + 1)
+        # Convert Decimal to int for JSON serialization
+        new_count = int(update_response.get('Attributes', {}).get('click_count', current_count + 1))
         log("INFO", "Click count updated", hash=url_hash, new_count=new_count)
         
         # Check if JSON format is requested via query parameter

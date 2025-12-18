@@ -104,7 +104,8 @@ def handle(req):
         
         # If URL already exists, return existing mapping with counter
         if existing_item:
-            click_count = existing_item.get('click_count', 0)
+            # Convert Decimal to int for JSON serialization
+            click_count = int(existing_item.get('click_count', 0))
             log("INFO", "Returning existing URL mapping", hash=url_hash, click_count=click_count)
         else:
             # Store new mapping in DynamoDB
