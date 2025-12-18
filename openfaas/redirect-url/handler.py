@@ -105,17 +105,39 @@ def handle(req):
             })
         
         original_url = response['Item']['original_url']
-        log("INFO", "URL found", hash=url_hash, original_url=original_url)
+        current_count = response['Item'].get('click_count', 0)
+        log("INFO", "URL found", hash=url_hash, original_url=original_url, current_count=current_count)
         
-        # Increment click count (optional)
+        # Increment click count
         log("INFO", "Incrementing click count", hash=url_hash)
-        table.update_item(
+        update_response = table.update_item(
             Key={'hash': url_hash},
             UpdateExpression='SET click_count = click_count + :inc',
-            ExpressionAttributeValues={':inc': 1}
+            ExpressionAttributeValues={':inc': 1},
+            ReturnValues='UPDATED_NEW'
         )
+        new_count = update_response.get('Attributes', {}).get('click_count', current_count + 1)
+        log("INFO", "Click count updated", hash=url_hash, new_count=new_count)
         
-        # Return redirect response (merge CORS headers with Location)
+        # Check if JSON format is requested via query parameter
+        query_string = os.getenv('Http_Query', '')
+        log("INFO", "Query string", query=query_string)
+        
+        # If format=json is in query string, return JSON instead of redirect
+        if 'format=json' in query_string:
+            log("INFO", "Returning JSON response", hash=url_hash, click_count=new_count)
+            response_body = {
+                "hash": url_hash,
+                "original_url": original_url,
+                "click_count": new_count
+            }
+            return json.dumps({
+                "statusCode": 200,
+                "headers": cors_headers,
+                "body": json.dumps(response_body)
+            })
+        
+        # Default: Return redirect response (merge CORS headers with Location)
         redirect_headers = cors_headers.copy()
         redirect_headers["Location"] = original_url
         

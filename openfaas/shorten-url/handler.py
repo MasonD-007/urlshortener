@@ -90,29 +90,47 @@ def handle(req):
         
         table_name = os.getenv('DYNAMODB_TABLE', 'url_mappings')
         table = dynamodb.Table(table_name)
-        log("INFO", "Storing URL mapping", table=table_name, hash=url_hash)
+        log("INFO", "Checking if URL mapping exists", table=table_name, hash=url_hash)
         
-        # Store mapping in DynamoDB
-        table.put_item(
-            Item={
-                'hash': url_hash,
-                'original_url': original_url,
-                'created_at': datetime.utcnow().isoformat(),
-                'click_count': 0
-            }
-        )
+        # Check if hash already exists
+        existing_item = None
+        try:
+            response = table.get_item(Key={'hash': url_hash})
+            if 'Item' in response:
+                existing_item = response['Item']
+                log("INFO", "Found existing URL mapping", hash=url_hash, click_count=existing_item.get('click_count', 0))
+        except Exception as e:
+            log("WARN", "Error checking for existing item", error=str(e))
         
-        log("INFO", "URL mapping stored successfully", hash=url_hash)
+        # If URL already exists, return existing mapping with counter
+        if existing_item:
+            click_count = existing_item.get('click_count', 0)
+            log("INFO", "Returning existing URL mapping", hash=url_hash, click_count=click_count)
+        else:
+            # Store new mapping in DynamoDB
+            log("INFO", "Storing new URL mapping", table=table_name, hash=url_hash)
+            table.put_item(
+                Item={
+                    'hash': url_hash,
+                    'original_url': original_url,
+                    'created_at': datetime.utcnow().isoformat(),
+                    'click_count': 0
+                }
+            )
+            click_count = 0
+            log("INFO", "URL mapping stored successfully", hash=url_hash)
         
         # Build short URL
         domain = os.getenv('SHORT_DOMAIN', 'http://localhost')
         short_url = f"{domain}/{url_hash}"
-        log("INFO", "Generated short URL", short_url=short_url, hash=url_hash)
+        log("INFO", "Generated short URL", short_url=short_url, hash=url_hash, click_count=click_count)
         
         response_body = {
             "hash": url_hash,
             "short_url": short_url,
-            "original_url": original_url
+            "original_url": original_url,
+            "click_count": click_count,
+            "already_exists": existing_item is not None
         }
         
         return json.dumps({
