@@ -1,0 +1,61 @@
+# URL Shortener - Main domain for short URLs
+url.masondrake.dev {
+    # Root path - serve frontend
+    handle / {
+        reverse_proxy localhost:3000
+    }
+
+    # Handle short URL redirects
+    # Match paths like /abc123 (8 character hex hash)
+    @shorthash {
+        path_regexp hash ^/([a-f0-9]{8})$
+    }
+    handle @shorthash {
+        # Proxy to redirect handler service on port 3001
+        reverse_proxy localhost:3001
+    }
+
+    # Serve frontend for other paths
+    handle * {
+        reverse_proxy localhost:3000
+    }
+
+    # Enable compression
+    encode gzip
+
+    # Logs
+    log {
+        output file /var/log/caddy/url-shortener.log
+    }
+}
+
+# API Gateway for OpenFaaS functions  
+api.masondrake.dev {
+    # Proxy all requests to OpenFaaS gateway
+    reverse_proxy localhost:8080
+
+    # Enable CORS
+    @options method OPTIONS
+    handle @options {
+        header {
+            Access-Control-Allow-Origin *
+            Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+            Access-Control-Allow-Headers "Content-Type, Authorization"
+        }
+        respond 200
+    }
+
+    header {
+        Access-Control-Allow-Origin *
+        Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+        Access-Control-Allow-Headers "Content-Type, Authorization"
+    }
+
+    # Enable compression
+    encode gzip
+
+    # Logs
+    log {
+        output file /var/log/caddy/api-gateway.log
+    }
+}

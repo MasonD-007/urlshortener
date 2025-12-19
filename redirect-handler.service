@@ -1,0 +1,18 @@
+[Unit]
+Description=URL Shortener Redirect Handler
+After=network.target openfaas.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/urlshortener
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/usr/bin/python3 /var/www/urlshortener/redirect-handler.py 3001
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

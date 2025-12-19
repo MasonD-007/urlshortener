@@ -158,12 +158,23 @@ else
     echo "Building Next.js application..."
     npm run build
     
+    # Copy redirect handler
+    echo "Installing redirect handler..."
+    cp "$SCRIPT_DIR/redirect-handler.py" "$DEPLOY_DIR/"
+    chmod +x "$DEPLOY_DIR/redirect-handler.py"
+    
+    # Install Python requests library if not present
+    if ! python3 -c "import requests" &> /dev/null; then
+        echo "Installing Python requests library..."
+        apt-get install -y python3-requests
+    fi
+    
     # Set ownership to www-data
     echo "Setting ownership to www-data..."
     chown -R www-data:www-data "$DEPLOY_DIR"
     
-    # Install systemd service
-    echo "Installing systemd service..."
+    # Install frontend systemd service
+    echo "Installing frontend systemd service..."
     cat > /etc/systemd/system/urlshortener-frontend.service << 'EOF'
 [Unit]
 Description=URL Shortener Frontend (Next.js)
@@ -188,23 +199,53 @@ StandardError=journal
 WantedBy=multi-user.target
 EOF
     
+    # Install redirect handler systemd service
+    echo "Installing redirect handler systemd service..."
+    cat > /etc/systemd/system/redirect-handler.service << 'EOF'
+[Unit]
+Description=URL Shortener Redirect Handler
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/urlshortener
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/usr/bin/python3 /var/www/urlshortener/redirect-handler.py 3001
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    
     # Reload systemd
     echo "Reloading systemd..."
     systemctl daemon-reload
     
-    # Enable and start the service
+    # Enable and start frontend service
     echo "Enabling and starting $SERVICE_NAME service..."
     systemctl enable "$SERVICE_NAME"
     systemctl restart "$SERVICE_NAME"
     
-    # Wait a moment for service to start
+    # Enable and start redirect handler service
+    echo "Enabling and starting redirect-handler service..."
+    systemctl enable redirect-handler
+    systemctl restart redirect-handler
+    
+    # Wait a moment for services to start
     sleep 3
     
     echo ""
-    echo "✓ Frontend deployed"
+    echo "✓ Frontend and redirect handler deployed"
     echo ""
     echo "Service Status:"
-    systemctl status "$SERVICE_NAME" --no-pager --lines=5
+    systemctl status "$SERVICE_NAME" --no-pager --lines=3
+    echo ""
+    systemctl status redirect-handler --no-pager --lines=3
 fi
 
 echo ""
