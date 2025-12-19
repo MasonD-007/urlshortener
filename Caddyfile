@@ -23,10 +23,8 @@ url.masondrake.dev {
     # Enable compression
     encode gzip
 
-    # Logs
-    log {
-        output file /var/log/caddy/url-shortener.log
-    }
+    # Logs go to systemd journal
+    log
 }
 
 # OpenFaaS Gateway
@@ -54,8 +52,6 @@ faas.masondrake.dev {
     # Enable compression
     encode gzip
 
-    # Logs
-    log {
-        output file /var/log/caddy/faas-gateway.log
-    }
+    # Logs go to systemd journal
+    log
 }
