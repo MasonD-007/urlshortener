@@ -68,8 +68,8 @@ Group=www-data
 WorkingDirectory=/var/www/urlshortener
 Environment="NODE_ENV=production"
 Environment="PORT=3000"
-Environment="NEXT_PUBLIC_API_GATEWAY=https://api.masondrake.dev"
-Environment="NEXT_PUBLIC_QRCODE_FUNCTION=https://api.masondrake.dev/function/qrcode-wrapper"
+Environment="NEXT_PUBLIC_API_GATEWAY=https://faas.masondrake.dev"
+Environment="NEXT_PUBLIC_QRCODE_FUNCTION=https://faas.masondrake.dev/function/qrcode-wrapper"
 ExecStart=/usr/bin/npm start
 Restart=on-failure
 RestartSec=10

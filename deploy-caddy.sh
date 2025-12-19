@@ -60,7 +60,30 @@ else
 fi
 
 echo "Reloading Caddy..."
-systemctl reload caddy
+if systemctl is-active --quiet caddy; then
+    echo "Caddy is running, reloading configuration..."
+    systemctl reload caddy || {
+        echo "⚠ Reload failed, trying restart..."
+        systemctl restart caddy
+    }
+else
+    echo "Caddy is not running, starting it..."
+    systemctl start caddy
+fi
+
+# Wait a moment for Caddy to start
+sleep 2
+
+# Check if Caddy started successfully
+if systemctl is-active --quiet caddy; then
+    echo "✓ Caddy is running"
+else
+    echo "❌ Caddy failed to start"
+    echo ""
+    echo "Checking logs..."
+    journalctl -u caddy -n 20 --no-pager
+    exit 1
+fi
 
 echo ""
 echo "=========================================="
@@ -69,7 +92,7 @@ echo "=========================================="
 echo ""
 echo "Services:"
 echo "  - url.masondrake.dev -> redirects + frontend"
-echo "  - api.masondrake.dev -> OpenFaaS gateway"
+echo "  - faas.masondrake.dev -> OpenFaaS gateway"
 echo ""
 echo "Check status: systemctl status caddy"
 echo "View logs: journalctl -u caddy -f"

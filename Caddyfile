@@ -29,8 +29,8 @@ url.masondrake.dev {
     }
 }
 
-# API Gateway for OpenFaaS functions  
-api.masondrake.dev {
+# OpenFaaS Gateway
+faas.masondrake.dev {
     # Proxy all requests to OpenFaaS gateway
     reverse_proxy localhost:8080
 
@@ -56,6 +56,6 @@ api.masondrake.dev {
 
     # Logs
     log {
-        output file /var/log/caddy/api-gateway.log
+        output file /var/log/caddy/faas-gateway.log
     }
 }
